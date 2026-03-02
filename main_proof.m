@@ -98,8 +98,8 @@ w1 = fulltosymmetrytensor_ext(setsizetensor(w0, N), solshape, symmetry);
 w1 = w1(:);
 
 % Weight parameters for norm estimates
-eta = 1;         % Spatial decay parameter
-etaOmega = 1;    % Weight for frequency parameter
+eta = 1 + 1e-7;         % Spatial decay parameter
+etaOmega = 1 + 1e-7;    % Weight for frequency parameter
 etaNu = 70;      % Weight for viscosity parameter  
 etaPhase = [etaOmega; etaNu];
 
