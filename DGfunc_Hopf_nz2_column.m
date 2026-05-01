@@ -25,7 +25,7 @@ forcing = classicforcingtensor;
 % Convert w0 calculation to be interval-compatible
 if exist('intval','file') && isintval(nu)
     w0 = 1/(2*nu)*forcing; 
-    w0 = intval(w0)
+    w0 = intval(w0);
 else
     w0 = 1/(2*nu)*forcing; 
 end

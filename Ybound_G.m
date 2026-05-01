@@ -1,14 +1,14 @@
 function Y = Ybound_G(A,Gext,symmetry,shape,nu,eta,etaPhase)
-% Ybound_G  Compute Y0 bound (residual bound) for Newton-Kantorovich theorem
+% Ybound_G computes Y0 bound (residual bound) for existence theorem
 %
 % Inputs:
-%   A         - Approximate inverse of Jacobian
-%   Gext      - Nonlinear function evaluation G
-%   symmetry  - Symmetry group 
-%   shape     - Index set shape for bounds
-%   nu        - Viscosity parameter
-%   eta       - Weights for x,y
-%   etaPhase  - Phase condition weights [etaOmega, etaNu]
+%   A - Approximate inverse of Jacobian
+%   Gext - Nonlinear function evaluation G
+%   symmetry - Symmetry group 
+%   shape - Index set shape for bounds
+%   nu - Viscosity parameter
+%   eta - Weights for x,y
+%   etaPhase - Phase condition weights [etaOmega, etaNu]
 
 % Extract phase condition weights
 etaOmega = etaPhase(1);
@@ -17,24 +17,30 @@ etaNu = etaPhase(2);
 % Generate index grids
 [nx, ny, nz, nt, ninshape, comp] = countersymtensor(sizeshape_Hopf(shape), shape);
 
-% Handle special case for Hopf bifurcation with nz=2
+% Handle special case for Hopf bifurcation with nz=2 or nz=1
 if strcmp(shape.type, 'ellHopf')
     nz = 2*ones(size(nz));  % Force nz=2 for Hopf case
+elseif strcmp(shape.type, 'ellHopf_nz1')
+    nz = ones(size(nz));   % Force nz=1 for nz1 Hopf case
 end
 
-% Adjust symmetry index for ellHopf case to include both vector components
+% Adjust symmetry index for ellHopf/ellHopf_nz1 case to include both vector components
 symmetry_idx = symmetry;
-if strcmp(shape.type, 'ellHopf') && symmetry == 1
-    symmetry_idx = 11;  % Include components 1 and 2 for nz=2
-elseif strcmp(shape.type, 'ellHopf') && symmetry == 25
-    symmetry_idx = 26;  % Include components 1 and 2 for nz=2
+if (strcmp(shape.type, 'ellHopf') || strcmp(shape.type, 'ellHopf_nz1')) && symmetry == 1
+    symmetry_idx = 11;
+elseif (strcmp(shape.type, 'ellHopf') || strcmp(shape.type, 'ellHopf_nz1')) && symmetry == 25
+    symmetry_idx = 26;
 end
 
 [symvar, symindex, ~, grouporder, multiplicity] = ...
     symmetryindicestensor_ext(nx, ny, nz, nt, comp, sizeshape_Hopf(shape), ninshape, symmetry_idx);
 
-% Identify nz=2 modes (relevant for Hopf bifurcation)
-nz2 = (nz(symvar) == 2);
+% Identify relevant nz modes (nz=2 for ellHopf, nz=1 for ellHopf_nz1)
+if strcmp(shape.type, 'ellHopf_nz1')
+    nz_select = (nz(symvar) == 1);
+else
+    nz_select = (nz(symvar) == 2);
+end
 
 % Compute wavenumber squared tensor
 [tilden2, ~] = tildentensor(nx, ny, nz, nu);
@@ -51,7 +57,7 @@ orbits = grouporder./multiplicity;
 weights = eta.^(abs(nx) + abs(ny) + abs(nz) + abs(nt)).*orbits;
 weights = weights(symvar);
 weights = weights(symindexjac);
-finiteweightseta = weights(nz2);  % Weights for nz=2 modes
+finiteweightseta = weights(nz_select);  % Weights for relevant nz modes
 
 % Eigenvalue reciprocals (time-independent case: nt=0)
 lambda = reshape(1./abs(nu*tilden2(:)), size(tilden2));

@@ -1,19 +1,19 @@
 function Z1finite = Z1finitebound_G(A,rv1large_Q2N,iv1large_Q2N,Omega,nu,wTrlarge_Q2N,wTilarge_Q2N,symmetry,Edaggershape,N,Etildeshape,eta,etaPhase)
-% Z1finitebound_G  Compute Z1 finite bound for Newton-Kantorovich theorem
+% Z1finitebound_G computes Z1 finite bound for existence theorem
 %
 % Inputs:
-%   A                    - Approximate inverse of Jacobian
+%   A - Approximate inverse of Jacobian
 %   rv1large_Q2N, iv1large_Q2N - Extended eigenvectors (real/imaginary)
-%   Omega                - Frequency parameter
-%   nu                   - Viscosity parameter
+%   Omega - Frequency parameter
+%   nu - Viscosity parameter
 %   wTrlarge_Q2N, wTilarge_Q2N - Extended approximation of eigenvectors
-%   sizeshape_dagger     - Size of finite part shape
-%   symmetry             - Symmetry group
-%   Edaggershape         - 3D ellips shape structure based on Ndagger
-%   N                    - Original tensor dimensions
-%   Etildeshape          - 3D ellips shape structure based on Ntilde
-%   eta                  - Weights for x,y
-%   etaPhase             - Phase condition weights [etaOmega, etaNu]
+%   sizeshape_dagger - Size of finite part shape
+%   symmetry - Symmetry group
+%   Edaggershape - 3D ellips shape structure based on Ndagger
+%   N - Original tensor dimensions
+%   Etildeshape - 3D ellips shape structure based on Ntilde
+%   eta - Weights for x,y
+%   etaPhase - Phase condition weights [etaOmega, etaNu]
 
 % Set up extended shapes for finite bound computation
 QNshape.type = 'otherplusrec';    % Column space

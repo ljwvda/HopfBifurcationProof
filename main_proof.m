@@ -201,7 +201,7 @@ w0der = -1/(2*nu^2)*forcing;  % derivative of equilibrium solution
 w1der=fulltosymmetrytensor_ext(setsizetensor(w0der,N),solshape,symmetry);
 w1der=w1der(:);
 
-Z1tail=Z1tailbound_G(w1,tensors,solshape,symmetry,nu,eta,etaPhase,Omega,w1der,rv1t,iv1t,EdaggershapeHopf,Ntilde,Ndagger,setup);
+Z1tail=Z1tailbound_G(w1,tensors,solshape,symmetry,nu,eta,etaPhase,Omega,w1der,rv1t,iv1t,EdaggershapeHopf,Ntilde,setup);
 disp(['the Z1 tail term is ',num2str(altsup(Z1tail))]);
 
 %%% Z2 %%%

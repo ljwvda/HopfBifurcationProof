@@ -47,7 +47,7 @@ weightsDG_col = [weights_nz2_col; weights_nz2_col]; % Column weights
 % Create mapping to extract Edaggershape part from Q2Nshape structure
 % We need to find which indices in Q2Nshape correspond to Edaggershape for nz=2 components
 
-% Get Edaggershape indices for nz=2 components (this matches A matrix structure)
+% Get Edaggershape indices for nz=2 components 
 [nx_edag,ny_edag,nz_edag,nt_edag,ninshape_edag,comp_edag] = countersymtensor(sizeshape_Hopf(Edaggershape),Edaggershape);
 [symvar_edag,~,~,grouporder_edag,multiplicity_edag,~] = symmetryindicestensor_ext(nx_edag,ny_edag,nz_edag,nt_edag,comp_edag,sizeshape_Hopf(Edaggershape),ninshape_edag,symmetry);
 nz2_edag = (nz_edag(symvar_edag)==2);
@@ -84,7 +84,7 @@ nz_Q2N_nz2 = nz_Q2N_nz2(nz2_row);
 nt_Q2N_nz2 = nt_Q2N_nz2(nz2_row);
 comp_Q2N_nz2 = comp_Q2N_nz2(nz2_row);
 
-% Find matches: for each Edaggershape mode, find corresponding Q2Nshape position
+% Find matches: For each Edaggershape mode, find corresponding Q2Nshape position
 for i = 1:length(nx_edag_nz2)
     match_idx = find(nx_Q2N_nz2 == nx_edag_nz2(i) & ...
         ny_Q2N_nz2 == ny_edag_nz2(i) & ...
@@ -148,7 +148,6 @@ weights_edag=eta.^(abs(nx_edag)+abs(ny_edag)+abs(nz_edag)+abs(nt_edag)).*orbits_
 weights_nz2_edag = weights_edag(symvar_edag);
 weights_nz2_edag = weights_nz2_edag(nz2_edag);
 weightsDG_edag = [weights_nz2_edag; weights_nz2_edag; etaOmega; etaNu]; % [x; y; omega; nu] for Edaggershape
-%%
 
 A_size = size(A,1); % Size of A matrix (from Edaggershape)
 DG_rows = 2*sum(nz2_row) + 2; % Size of DG rows (from Q2Nshape): 2*Q2N+2
@@ -166,37 +165,35 @@ rem_nx = [];
 rem_ny = [];
 rem_nz = [];
 rem_nt = [];
+rem_comp = [];
+rem_is_real = logical([]);  % true = real-part row, false = imaginary-part row
 
-% Map remainder_indices back to the Q2Nshape structure to get (nx,ny,nz,nt)
-nz2_indices = find(nz2_row); % Indices of nz=2 components in Q2Nshape
-
+% Map remainder_indices back to the Q2Nshape structure to get (nx,ny,nz,nt,comp).
 for i = 1:length(remainder_indices)
     idx = remainder_indices(i);
     if idx <= n_vars_row
-        % Real part of nz=2 variable - idx points directly to nz2_indices
-        if idx <= length(nz2_indices)
-            mode_idx = nz2_indices(idx); % Get the actual mode index
-            rem_nx = [rem_nx; nx_row(mode_idx)];
-            rem_ny = [rem_ny; ny_row(mode_idx)];
-            rem_nz = [rem_nz; nz_row(mode_idx)];
-            rem_nt = [rem_nt; nt_row(mode_idx)];
-        end
+        % Real-part row for the idx-th Q2Nshape nz=2 mode
+        rem_nx = [rem_nx; nx_Q2N_nz2(idx)];
+        rem_ny = [rem_ny; ny_Q2N_nz2(idx)];
+        rem_nz = [rem_nz; nz_Q2N_nz2(idx)];
+        rem_nt = [rem_nt; nt_Q2N_nz2(idx)];
+        rem_comp = [rem_comp; comp_Q2N_nz2(idx)];
+        rem_is_real = [rem_is_real; true];
     elseif idx <= 2*n_vars_row
-        % Imaginary part of nz=2 variable
+        % Imaginary-part row for the (idx-n_vars_row)-th Q2Nshape nz=2 mode
         real_idx = idx - n_vars_row;
-        if real_idx <= length(nz2_indices)
-            mode_idx = nz2_indices(real_idx); % Get the actual mode index
-            rem_nx = [rem_nx; nx_row(mode_idx)];
-            rem_ny = [rem_ny; ny_row(mode_idx)];
-            rem_nz = [rem_nz; nz_row(mode_idx)];
-            rem_nt = [rem_nt; nt_row(mode_idx)];
-        end
+        rem_nx = [rem_nx; nx_Q2N_nz2(real_idx)];
+        rem_ny = [rem_ny; ny_Q2N_nz2(real_idx)];
+        rem_nz = [rem_nz; nz_Q2N_nz2(real_idx)];
+        rem_nt = [rem_nt; nt_Q2N_nz2(real_idx)];
+        rem_comp = [rem_comp; comp_Q2N_nz2(real_idx)];
+        rem_is_real = [rem_is_real; false];
     end
     % Skip omega and nu terms (indices 2*n_vars_row+1 and 2*n_vars_row+2)
 end
 
 % Compute remainder lambda and weights
-tilden2_remainder = rem_nx.^2 + rem_ny.^2 + rem_nz.^2 + rem_nt.^2;
+tilden2_remainder = rem_nx.^2 + rem_ny.^2 + rem_nz.^2;
 lambda_remainder = 1./abs(nu*tilden2_remainder);
 lambda_remainder(nu*tilden2_remainder==0)=0;
 remainder_weights = eta.^(abs(rem_nx)+abs(rem_ny)+abs(rem_nz)+abs(rem_nt));
@@ -227,7 +224,6 @@ parfor col_idx = 1:DG_cols
     DG_col_edag_extracted = DG_col(edag_row_indices); % Extract Edaggershape part
     
     % Create the full-size DG_col_edag vector with zeros for missing modes
-    % A matrix expects size [2*n_edag + 2, 1] where n_edag = number of Edaggershape nz=2 modes
     n_edag = sum(nz2_edag);  % Total number of Edaggershape nz=2 modes
     DG_col_edag = altzeros([2*n_edag + 2, 1], nu);
     
@@ -239,7 +235,7 @@ parfor col_idx = 1:DG_cols
     DG_col_edag(2*n_edag+1) = DG_col_edag_extracted(end-1); % Omega
     DG_col_edag(2*n_edag+2) = DG_col_edag_extracted(end); % Nu
     
-    % Create identity vector: which Edaggershape mode does this QNshape column correspond to?
+    % Create identity vector: which Edaggershape mode does this QNshape column correspond to
     evec1 = altzeros([A_size,1], nu);
     
     % Determine which QNshape nz=2 mode index col_idx corresponds to
@@ -282,7 +278,27 @@ parfor col_idx = 1:DG_cols
     if ~isempty(remainder_indices) && ~isempty(lambda_remainder)
         DG_col_remainder = DG_col(remainder_indices);
         evec_rem = altzeros([numel(DG_col_remainder),1], nu);
-        match_rem = find(remainder_indices == col_idx);
+        % Find the remainder row whose mode and real/imaginary part matches this column
+        if col_idx <= n_vars_col
+            col_nx_val = nx_QN_col_nz2(col_idx);
+            col_ny_val = ny_QN_col_nz2(col_idx);
+            col_nz_val = nz_QN_col_nz2(col_idx);
+            col_nt_val = nt_QN_col_nz2(col_idx);
+            col_comp_val = comp_QN_col_nz2(col_idx);
+            match_rem = find(rem_nx == col_nx_val & rem_ny == col_ny_val & ...
+                rem_nz == col_nz_val & rem_nt == col_nt_val & ...
+                rem_comp == col_comp_val & rem_is_real);
+        else
+            qn_idx = col_idx - n_vars_col;
+            col_nx_val = nx_QN_col_nz2(qn_idx);
+            col_ny_val = ny_QN_col_nz2(qn_idx);
+            col_nz_val = nz_QN_col_nz2(qn_idx);
+            col_nt_val = nt_QN_col_nz2(qn_idx);
+            col_comp_val = comp_QN_col_nz2(qn_idx);
+            match_rem = find(rem_nx == col_nx_val & rem_ny == col_ny_val & ...
+                rem_nz == col_nz_val & rem_nt == col_nt_val & ...
+                rem_comp == col_comp_val & ~rem_is_real);
+        end
         evec_rem(match_rem) = 1;
         Icol_remainder = abs(evec_rem - lambda_remainder .* remainder_weights .* DG_col_remainder);
         max_col_remainder = max(Icol_remainder) / col_weight;
@@ -309,7 +325,7 @@ max_remainder_eigvec_cols = max(max_remainder_eigvec_cols);
 %                        DG4 = real(wT)*y+imag(wT)*x    ->  d/d_omega = 0
 
 DG_col_omega = altzeros([DG_rows, 1], nu);
-% Use nz=2 components from Q2Nshape structure - compute FULL column
+% Use nz=2 components from Q2Nshape structure - compute full column
 nz2_positions = find(nz2_row); % Positions of nz=2 components in Q2Nshape
 x_nz2 = rv1large_Q2N(nz2_positions);  % real parts of nz=2 components
 y_nz2 = iv1large_Q2N(nz2_positions);  % imaginary parts of nz=2 components
@@ -339,7 +355,6 @@ IADG_col_omega = ID1(:,end-1)-A*DG_col_omega_edag;
 weighted_IADGcol_omega = abs(IADG_col_omega).*weightsDG_edag;
 col_sum_omega = sum(abs(weighted_IADGcol_omega))/etaOmega;
 disp(['Omega column sum: ', num2str(altsup(col_sum_omega))]);
-
 
 %% Column for derivative w.r.t. nu
 
@@ -382,7 +397,7 @@ DJnu_1 = diag(tilden2_full(jacsymvar));
 DJr_nu = real(DJnu_1)+real(Jquad); % Derivative real(J) w.r.t. nu
 DJi_nu = imag(DJnu_1)+imag(Jquad); % Derivative imag(J) w.r.t. nu
 
-% Now compute the FULL nu column of DG
+% Now compute the full nu column of DG
 DG_col_nu = altzeros([DG_rows, 1], nu);
 
 % Compute nu derivatives for the jacobian-sized components

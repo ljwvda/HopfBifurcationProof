@@ -1,24 +1,23 @@
-function [Z1tail,Z1tailcoeff]=Z1tailbound_G(wsol,tensors,solshapeOld,symmetry,nu,eta,etaPhase,Omega,w1der,rv1,iv1,shape,Ntilde,Ndagger,setup)
-% Z1tailbound_G  Compute Z1 tail bound for Newton-Kantorovich theorem
+function [Z1tail,Z1tailcoeff]=Z1tailbound_G(wsol,tensors,solshapeOld,symmetry,nu,eta,etaPhase,Omega,w1der,rv1,iv1,shape,Ntilde,setup)
+% Z1tailbound_G computes Z1 tail bound for existence theorem
 %
 % Inputs:
-%   wsol        - Solution vector in symmetry-reduced form
-%   tensors     - Structure containing derivative tensors (Dw, Mw, DMw)
+%   wsol - Solution vector in symmetry-reduced form
+%   tensors - Structure containing derivative tensors (Dw, Mw, DMw)
 %   solshapeOld - Original solution shape
-%   symmetry    - Symmetry group 
-%   nu          - Viscosity parameter
-%   eta         - Weights for x,y
-%   etaPhase    - Weights for phase/amplitude conditions [etaOmega, etaNu]
-%   Omega       - Frequency parameter
-%   w1der       - Derivative of equilibrium w.r.t. nu
-%   rv1, iv1    - Real and imaginary parts of eigenvector (tensor form)
-%   shape       - Index set shape for finite part
-%   Ntilde      - Tail bound parameter
-%   Ndagger     - Finite part truncation parameter
-%   setup       - Problem dimension ('2D' or 'not2D')
+%   symmetry - Symmetry group 
+%   nu - Viscosity parameter
+%   eta - Weights for x,y
+%   etaPhase - Weights for phase/amplitude conditions [etaOmega, etaNu]
+%   Omega - Frequency parameter
+%   w1der - Derivative of equilibrium w.r.t. nu
+%   rv1, iv1 - Real and imaginary parts of eigenvector (tensor form)
+%   shape - Index set shape for finite part
+%   Ntilde - Tail bound parameter
+%   setup - Problem dimension ('2D' or 'not2D')
 %
 % Outputs:
-%   Z1tail      - Total Z1 tail bound
+%   Z1tail - Total Z1 tail bound
 %   Z1tailcoeff - Coefficients used in tail estimate
 
 % Extract derivative tensors
@@ -103,38 +102,53 @@ Z1tail2 = 2*Omega/Ntilde;
 
 shapep1.type='rec';
 Np1size = sizeshape_Hopf(solshapeOld);
-shapep1.Nrec = [Np1size(1)+1 Np1size(2)+1 2 0];
+
+% Determine which nz value to use based on shape type
+if strcmp(shape.type, 'ellHopf_nz1')
+    hopf_nz = 1;
+else
+    hopf_nz = 2;  % default for ellHopf
+end
+shapep1.Nrec = [Np1size(1)+1 Np1size(2)+1 hopf_nz 0];
 
 % We take fourth output as we only want the quadratic part of the Jacobian,
 % evaluated at derivative of equilibrium, which is w1der
-[~,~,~,Dpsiderp1]=FDFsymflextensor_ext_Hopf_trunc_nz2([w1der;0],nu,classicforcingtensor,w1der,solshapeOld,symmetry,shapep1);
+if strcmp(shape.type, 'ellHopf_nz1')
+    [~,~,~,Dpsiderp1]=FDFsymflextensor_ext_Hopf_trunc_nz1([w1der;0],nu,classicforcingtensor,w1der,solshapeOld,symmetry,shapep1);
+else
+    [~,~,~,Dpsiderp1]=FDFsymflextensor_ext_Hopf_trunc_nz2([w1der;0],nu,classicforcingtensor,w1der,solshapeOld,symmetry,shapep1);
+end
 
 symmetry_idx = symmetry;
-if (strcmp(shape.type, 'ellHopf') & symmetry == 1)
-    symmetry_idx = 11;  % This ensures we include components 1 and 2 for nz=2
-elseif (strcmp(shape.type, 'ellHopf') & symmetry == 25)
-    symmetry_idx = 26;  % This ensures we include components 1 and 2 for nz=2
+if (strcmp(shape.type, 'ellHopf') || strcmp(shape.type, 'ellHopf_nz1')) && symmetry == 1
+    symmetry_idx = 11;
+elseif (strcmp(shape.type, 'ellHopf') || strcmp(shape.type, 'ellHopf_nz1')) && symmetry == 25
+    symmetry_idx = 26;
 end
 
-% New size with one more mode, used for Nz=2 only
-shapenz2.type='rec';
-shapenz2.Nrec = [Np1size(1)+1 Np1size(2)+1 0 0];
+% New size with one more mode, for the relevant nz only
+shapenz.type='rec';
+shapenz.Nrec = [Np1size(1)+1 Np1size(2)+1 0 0];
 
-[nx_nz2,ny_nz2,nz_nz2,nt_nz2,ninshape_nz2,comp_nz2] = countersymtensor(sizeshape_Hopf(shapenz2),shapenz2);
-if strcmp(shape.type, 'ellHopf') % Specific for Hopf bifurcation problem with nz=2
-      nz_nz2 = 2*ones(size(nz_nz2));
+[nx_nzk,ny_nzk,nz_nzk,nt_nzk,ninshape_nzk,comp_nzk] = countersymtensor(sizeshape_Hopf(shapenz),shapenz);
+if strcmp(shape.type, 'ellHopf')       % nz=2 case
+    nz_nzk = 2*ones(size(nz_nzk));
+elseif strcmp(shape.type, 'ellHopf_nz1') % nz=1 case
+    nz_nzk = ones(size(nz_nzk));
 end
-[symvar_nz2,symindex_nz2,~,grouporder_nz2,multiplicity_nz2] = symmetryindicestensor_ext(nx_nz2,ny_nz2,nz_nz2,nt_nz2,comp_nz2,sizeshape_Hopf(shapenz2),ninshape_nz2,symmetry_idx);
+[symvar_nzk,symindex_nzk,~,grouporder_nzk,multiplicity_nzk] = symmetryindicestensor_ext(nx_nzk,ny_nzk,nz_nzk,nt_nzk,comp_nzk,sizeshape_Hopf(shapenz),ninshape_nzk,symmetry_idx);
 
-tilden2_nz2 = tildentensor(nx_nz2,ny_nz2,nz_nz2,nu);
+tilden2_nzk = tildentensor(nx_nzk,ny_nzk,nz_nzk,nu);
 
-rv1tp1 = setsizetensor(rv1,[Np1size(1)+1 Np1size(2)+1 2 0]);
-rv1tp1_nz2 = rv1tp1(:,:,5,:,:);
-rv1p1 = fulltosymmetrytensor_ext(rv1tp1_nz2,shapenz2,symmetry_idx); 
+% Extract the nz=hopf_nz Fourier slice: index position = 2*hopf_nz+1 in the nz dimension
+nz_slice_idx = 2*hopf_nz + 1;
+rv1tp1 = setsizetensor(rv1,[Np1size(1)+1 Np1size(2)+1 hopf_nz 0]);
+rv1tp1_nzk = rv1tp1(:,:,nz_slice_idx,:,:);
+rv1p1 = fulltosymmetrytensor_ext(rv1tp1_nzk,shapenz,symmetry_idx); 
 
-iv1tp1 = setsizetensor(iv1,[Np1size(1)+1 Np1size(2)+1 2 0]);
-iv1tp1_nz2 = iv1tp1(:,:,5,:,:);
-iv1p1 = fulltosymmetrytensor_ext(iv1tp1_nz2,shapenz2,symmetry_idx);
+iv1tp1 = setsizetensor(iv1,[Np1size(1)+1 Np1size(2)+1 hopf_nz 0]);
+iv1tp1_nzk = iv1tp1(:,:,nz_slice_idx,:,:);
+iv1p1 = fulltosymmetrytensor_ext(iv1tp1_nzk,shapenz,symmetry_idx);
 
 % Compute tail contributions from derivative terms
 Z1tail3_1 = real(Dpsiderp1)*rv1p1;
@@ -146,25 +160,25 @@ Z1tail4_2 = real(Dpsiderp1)*iv1p1;
 Z1tail3sum = abs(Z1tail3_1 - Z1tail3_2);
 Z1tail4sum = abs(Z1tail4_1 + Z1tail4_2);
 
-%% Compute weighted tail bounds for nz=2 modes
+%% Compute weighted tail bounds for relevant nz modes
 
-% Partition indices into finite and tail parts for nz=2 case
-nfinite_nz2 = shapetensor(nx_nz2, ny_nz2, nz_nz2, nt_nz2, shape);
-tailsymvar_nz2 = (symvar_nz2 & ~nfinite_nz2);
-symindextail_nz2 = symindex_nz2(tailsymvar_nz2);
+% Partition indices into finite and tail parts
+nfinite_nzk = shapetensor(nx_nzk, ny_nzk, nz_nzk, nt_nzk, shape);
+tailsymvar_nzk = (symvar_nzk & ~nfinite_nzk);
+symindextail_nzk = symindex_nzk(tailsymvar_nzk);
 
-% Compute weights for nz=2 modes using orbit-stabilizer formula
-orbits_nz2 = grouporder_nz2./multiplicity_nz2;
-weights_nz2 = eta.^(abs(nx_nz2) + abs(ny_nz2) + abs(nz_nz2) + abs(nt_nz2)).*orbits_nz2;
-weights_nz2 = weights_nz2(symvar_nz2);
+% Compute weights using orbit-stabilizer formula
+orbits_nzk = grouporder_nzk./multiplicity_nzk;
+weights_nzk = eta.^(abs(nx_nzk) + abs(ny_nzk) + abs(nz_nzk) + abs(nt_nzk)).*orbits_nzk;
+weights_nzk = weights_nzk(symvar_nzk);
 
-% Eigenvalue reciprocals for nz=2 modes
-lambda_nz2 = reshape(1./abs(nu*tilden2_nz2(:)), size(tilden2_nz2));
-lambda_nz2 = lambda_nz2(symvar_nz2);
+% Eigenvalue reciprocals
+lambda_nzk = reshape(1./abs(nu*tilden2_nzk(:)), size(tilden2_nzk));
+lambda_nzk = lambda_nzk(symvar_nzk);
 
 % Compute final tail bound components
-Z1tail3 = sum(abs(lambda_nz2(symindextail_nz2).*Z1tail3sum(symindextail_nz2)).*weights_nz2(symindextail_nz2)); 
-Z1tail4 = sum(abs(lambda_nz2(symindextail_nz2).*Z1tail4sum(symindextail_nz2)).*weights_nz2(symindextail_nz2)); 
+Z1tail3 = sum(abs(lambda_nzk(symindextail_nzk).*Z1tail3sum(symindextail_nzk)).*weights_nzk(symindextail_nzk)); 
+Z1tail4 = sum(abs(lambda_nzk(symindextail_nzk).*Z1tail4sum(symindextail_nzk)).*weights_nzk(symindextail_nzk)); 
 
 % Report individual tail bound components
 disp(['Z1tail1: ', num2str(altsup(Z1tail1))]);

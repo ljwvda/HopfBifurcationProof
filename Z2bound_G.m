@@ -1,16 +1,16 @@
 function Z2=Z2bound_G(A,rv1,iv1,symmetry,shape,nu,eta,etaPhase,Ndagger,r)
-% Z2bound_G  Compute Z2 bound  for Newton-Kantorovich theorem  
+% Z2bound_G computes Z2 bound  for existence theorem  
 %
 % Inputs:
-%   A         - Approximate inverse of Jacobian  
-%   rv1, iv1  - Real and imaginary parts of eigenvector
-%   symmetry  - Symmetry group 
-%   shape     - Index set shape for bounds
-%   nu        - Viscosity parameter
-%   eta       - Weights for x,y
-%   etaPhase  - Phase condition weights [etaOmega, etaNu]
-%   Ndagger   - Finite part truncation parameter
-%   r         - Radius for bound computation
+%   A - Approximate inverse of Jacobian  
+%   rv1, iv1 - Real and imaginary parts of eigenvector
+%   symmetry - Symmetry group 
+%   shape - Index set shape for bounds
+%   nu - Viscosity parameter
+%   eta - Weights for x,y
+%   etaPhase - Phase condition weights [etaOmega, etaNu]
+%   Ndagger - Finite part truncation parameter
+%   r - Radius for bound computation
 
 % Extract phase condition weights
 etaOmega = etaPhase(1);
@@ -20,17 +20,19 @@ etaNu = etaPhase(2);
 M = sizeshape_Hopf(shape);
 [nx, ny, nz, nt, ninshape, comp] = countersymtensor(M, shape);
 
-% Handle special case for Hopf bifurcation with nz=2
+% Handle special case for Hopf bifurcation with nz=2 or nz=1
 if strcmp(shape.type, 'ellHopf')
     nz = 2*ones(size(nz));  % Force nz=2 for Hopf case
+elseif strcmp(shape.type, 'ellHopf_nz1')
+    nz = ones(size(nz));   % Force nz=1 for nz1 Hopf case
 end
 
-% Adjust symmetry index for ellHopf case
+% Adjust symmetry index for ellHopf/ellHopf_nz1 case
 symmetry_idx = symmetry;
-if strcmp(shape.type, 'ellHopf') && symmetry == 1
-    symmetry_idx = 11;  % Include components 1 and 2 for nz=2
-elseif strcmp(shape.type, 'ellHopf') && symmetry == 25
-    symmetry_idx = 26;  % Include components 1 and 2 for nz=2
+if (strcmp(shape.type, 'ellHopf') || strcmp(shape.type, 'ellHopf_nz1')) && symmetry == 1
+    symmetry_idx = 11;
+elseif (strcmp(shape.type, 'ellHopf') || strcmp(shape.type, 'ellHopf_nz1')) && symmetry == 25
+    symmetry_idx = 26;
 end
 
 [symvar, symindex, ~, grouporder, multiplicity] = ...
@@ -46,8 +48,12 @@ orbits = grouporder./multiplicity;
 weights = eta.^(abs(nx) + abs(ny) + abs(nz) + abs(nt)).*orbits;
 weights = weights(symvar);
 finiteweightsetetaPhase = weights(symindexfinite);
-nz2 = (nz(symvar)==2); % Select only nz == 2 components
-% finiteweightsetetaOmega = finiteweightsetetaOmega(nz2);
+% Select only relevant nz components (nz=2 for ellHopf, nz=1 for ellHopf_nz1)
+if strcmp(shape.type, 'ellHopf_nz1')
+    nz_select = (nz(symvar)==1);
+else
+    nz_select = (nz(symvar)==2);
+end
 finiteweightsetetaPhase = [finiteweightsetetaPhase; etaOmega; etaNu]; 
 
 % operator norm in the rescaled symmetrized norm
@@ -90,8 +96,8 @@ Z2sum1_1 = max(v(1:end-2)*abs(A11*tilden2mat)./vvmaxn) + ...
 Z2sum1_1=2*Z2sum1_1*(1/etaNu);
 
 Z2sum1_2 = 4*(2/nu)*(1/etaNu); % summation over four terms
-normx = sum(abs(rv1(nz2)).*vv');
-normy = sum(abs(iv1(nz2)).*vv');
+normx = sum(abs(rv1(nz_select)).*vv');
+normy = sum(abs(iv1(nz_select)).*vv');
 Z2sum1_3aux = (normx+normy+2*r)*(1/nu^3+1/(4*nu^4))*4*(3+roottwo)*eta^2;
 % The diagonal is only present in A11, so only there we need the max 
 Z2sum1_3 = (4*2*(3+roottwo)*eta^2/nu^2*(1/etaNu)+2*(1/etaOmega)+Z2sum1_3aux*(1/etaNu^2))*(max([normA11maxn,1/(sqrt(nu*Ndagger))])+normA21maxn+normA31+normA41);  
