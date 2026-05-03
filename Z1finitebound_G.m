@@ -46,7 +46,7 @@ weights_dg_col = eta.^(abs(nx_dg_col) + abs(ny_dg_col) + abs(nz_dg_col) + abs(nt
 weights_nz2_col = weights_dg_col(symvar_dg_col);
 weights_nz2_col_only = weights_nz2_col(nz2_dg_col);  % Extract nz=2 components only
 
-% Set up column weights 
+% Set up column weights
 % Matrix structure: rows from Q2Nshape, columns from QNshape
 % Columns: [real_part; imaginary_part] for nz=2 modes
 weightsDG_col = [weights_nz2_col_only; weights_nz2_col_only];
@@ -93,7 +93,7 @@ for i = 1:length(nx_edag_nz2)
         nt_Q2N_nz2 == nt_edag_nz2(i) & ...
         comp_Q2N_nz2 == comp_edag_nz2(i));
     if ~isempty(match_idx)
-        edag_to_Q2N_mapping = [edag_to_Q2N_mapping; match_idx]; 
+        edag_to_Q2N_mapping = [edag_to_Q2N_mapping; match_idx];
     else
         edag_to_Q2N_mapping = [edag_to_Q2N_mapping; -1];
     end
@@ -125,7 +125,7 @@ for i = 1:length(nx_edag_nz2)
         nt_QN_col_nz2 == nt_edag_nz2(i) & ...
         comp_QN_col_nz2 == comp_edag_nz2(i));
     if ~isempty(match_idx)
-        edag_to_QN_col_mapping = [edag_to_QN_col_mapping; match_idx]; 
+        edag_to_QN_col_mapping = [edag_to_QN_col_mapping; match_idx];
     else
         edag_to_QN_col_mapping = [edag_to_QN_col_mapping; -1];
     end
@@ -163,7 +163,7 @@ disp(['DG matrix size: ', num2str(DG_rows), 'x', num2str(DG_cols)]);
 
 % Initialize maximum values
 max_col_sum = 0;
-max_remainder_eigvec_cols = 0; 
+max_remainder_eigvec_cols = 0;
 
 % Precompute remainder indices and properties
 all_indices = (1:DG_rows)';
@@ -175,35 +175,30 @@ remainder_ny = [];
 remainder_nz = [];
 remainder_nt = [];
 remainder_comp = [];
+remainder_is_real = logical([]); % true = real-part row, false = imaginary-part row
 
-% Map remainder_indices back to the Q2Nshape structure to get (nx,ny,nz,nt)
-nz2_indices = find(nz2_dg_row); % Indices of nz=2 components in Q2Nshape
-
+% Map remainder_indices back to the Q2Nshape structure to get (nx,ny,nz,nt,comp)
 for i = 1:length(remainder_indices)
     idx = remainder_indices(i);
     if idx <= n_vars_row
-        % Real part of nz=2 variable 
-        if idx <= length(nz2_indices)
-            mode_idx = nz2_indices(idx); % Get the actual mode index
-            remainder_nx = [remainder_nx; nx_dg_row(mode_idx)];
-            remainder_ny = [remainder_ny; ny_dg_row(mode_idx)];
-            remainder_nz = [remainder_nz; nz_dg_row(mode_idx)];
-            remainder_nt = [remainder_nt; nt_dg_row(mode_idx)];
-            remainder_comp = [remainder_comp; comp_dg_row(mode_idx)];
-        end
-    elseif idx <= 2*n_vars_row
-        % Imaginary part of nz=2 variable
-        real_idx = idx - n_vars_row;
-        if real_idx <= length(nz2_indices)
-            mode_idx = nz2_indices(real_idx); % Get the actual mode index
-            remainder_nx = [remainder_nx; nx_dg_row(mode_idx)];
-            remainder_ny = [remainder_ny; ny_dg_row(mode_idx)];
-            remainder_nz = [remainder_nz; nz_dg_row(mode_idx)];
-            remainder_nt = [remainder_nt; nt_dg_row(mode_idx)];
-            remainder_comp = [remainder_comp; comp_dg_row(mode_idx)];
-        end
-    end
-    % Skip omega and nu terms (indices 2*n_vars_row+1 and 2*n_vars_row+2)
+        % Real-part row for the idx-th Q2Nshape nz=2 mode
+        remainder_nx = [remainder_nx; nx_Q2N_nz2(idx)];
+        remainder_ny = [remainder_ny; ny_Q2N_nz2(idx)];
+        remainder_nz = [remainder_nz; nz_Q2N_nz2(idx)];
+        remainder_nt = [remainder_nt; nt_Q2N_nz2(idx)];
+        remainder_comp = [remainder_comp; comp_Q2N_nz2(idx)];
+        remainder_is_real = [remainder_is_real; true];
+elseif idx <= 2*n_vars_row
+    % Imaginary-part row for the (idx-n_vars_row)-th Q2Nshape nz=2 mode
+    real_idx = idx - n_vars_row;
+    remainder_nx = [remainder_nx; nx_Q2N_nz2(real_idx)];
+    remainder_ny = [remainder_ny; ny_Q2N_nz2(real_idx)];
+    remainder_nz = [remainder_nz; nz_Q2N_nz2(real_idx)];
+    remainder_nt = [remainder_nt; nt_Q2N_nz2(real_idx)];
+    remainder_comp = [remainder_comp; comp_Q2N_nz2(real_idx)];
+    remainder_is_real = [remainder_is_real; false];
+end
+% Skip omega and nu terms (indices 2*n_vars_row+1 and 2*n_vars_row+2)
 end
 
 % Compute remainder lambda and weights
@@ -216,7 +211,7 @@ remainder_weights = eta.^(abs(remainder_nx)+abs(remainder_ny)+abs(remainder_nz)+
 
 % Loop over Stilde(=QNshape) columns
 for col_idx = 1:DG_cols
-    
+
     if mod(col_idx, 1000) == 0
         disp(['Computing QNshape column ', num2str(col_idx), ' out of ', num2str(DG_cols), ', current max: ', num2str(max_col_sum)]);
     end
@@ -226,12 +221,12 @@ for col_idx = 1:DG_cols
 
     % Extract Edaggershape part from DG_col to match A matrix size
     DG_col_edag_extracted = DG_col(edag_row_indices); % Extract Edaggershape part
-    
+
     % Create the full-size DG_col_edag vector with zeros for missing modes
     % A matrix expects size [2*n_edag + 2, 1] where n_edag = number of Edaggershape nz=2 modes
     n_edag = sum(nz2_edag);  % Total number of Edaggershape nz=2 modes
     DG_col_edag = altzeros([2*n_edag + 2, 1], nu);
-    
+
     % Fill in the valid parts (modes that exist in both Edaggershape and Q2Nshape)
     % This is necessary for the case Ndagger >> Ntilde
     n_valid_modes = sum(row_mapping_mask);
@@ -240,12 +235,12 @@ for col_idx = 1:DG_cols
     DG_col_edag(n_edag + valid_edag_indices) = DG_col_edag_extracted(n_valid_modes+1:2*n_valid_modes); % Imaginary parts
     DG_col_edag(2*n_edag+1) = DG_col_edag_extracted(end-1); % Omega
     DG_col_edag(2*n_edag+2) = DG_col_edag_extracted(end); % Nu
-    
+
     % Create identity vector: which Edaggershape mode does this QNshape column correspond to?
     % col_idx is the index in QNshape columns (1:DG_cols)
     % We need to check if this QNshape column corresponds to any Edaggershape mode
     evec1 = altzeros([A_size,1], nu);
-    
+
     % Determine which QNshape nz=2 mode index col_idx corresponds to
     if col_idx <= n_vars_col  % Real part
         QN_mode_idx = col_idx;
@@ -254,11 +249,11 @@ for col_idx = 1:DG_cols
         QN_mode_idx = col_idx - n_vars_col;
         is_real = false;
     end
-    
+
     % Find if this QNshape mode exists in Edaggershape
     % Compare with the modes in edag_to_QN_col_mapping
     edag_mode_match = find(edag_to_QN_col_mapping == QN_mode_idx);
-    
+
     if ~isempty(edag_mode_match)
         % This QNshape column corresponds to an Edaggershape mode
         if is_real
@@ -275,7 +270,7 @@ for col_idx = 1:DG_cols
     % Use weights corresponding to Edaggershape structure
     weighted_IADGcol = abs(IADG_col).*weightsDG_edag;
 
-    % Get the correct column weight 
+    % Get the correct column weight
     col_weight = weightsDG_col(col_idx);
 
     % Compute column sum and update maximum
@@ -287,6 +282,26 @@ for col_idx = 1:DG_cols
         DG_col_remainder = DG_col(remainder_indices);
         evec_rem = altzeros([numel(DG_col_remainder),1], nu);
         match_rem = find(remainder_indices == col_idx);
+        if col_idx <= n_vars_col
+            col_nx_val = nx_QN_col_nz2(col_idx);
+            col_ny_val = ny_QN_col_nz2(col_idx);
+            col_nz_val = nz_QN_col_nz2(col_idx);
+            col_nt_val = nt_QN_col_nz2(col_idx);
+            col_comp_val = comp_QN_col_nz2(col_idx);
+            match_rem = find(remainder_nx == col_nx_val & remainder_ny == col_ny_val & ...
+                remainder_nz == col_nz_val & remainder_nt == col_nt_val & ...
+                remainder_comp == col_comp_val & remainder_is_real);
+        else
+            qn_idx = col_idx - n_vars_col;
+            col_nx_val = nx_QN_col_nz2(qn_idx);
+            col_ny_val = ny_QN_col_nz2(qn_idx);
+            col_nz_val = nz_QN_col_nz2(qn_idx);
+            col_nt_val = nt_QN_col_nz2(qn_idx);
+            col_comp_val = comp_QN_col_nz2(qn_idx);
+            match_rem = find(remainder_nx == col_nx_val & remainder_ny == col_ny_val & ...
+                remainder_nz == col_nz_val & remainder_nt == col_nt_val & ...
+                remainder_comp == col_comp_val & ~remainder_is_real);
+        end
         evec_rem(match_rem) = 1;
         Icol_remainder = abs(evec_rem - lambda_remainder .* remainder_weights .* DG_col_remainder);
         max_col_remainder = max(Icol_remainder) / col_weight;
@@ -429,7 +444,7 @@ evec_rem_nu = altzeros([numel(DG_col_nu_rem),1], nu);
 match_rem_omega = find(remainder_indices == 2*n_vars_row+1);
 evec_rem_omega(match_rem_omega) = 1;
 
-% Check if nu row (2*n_vars_row+2) is in remainder_indices  
+% Check if nu row (2*n_vars_row+2) is in remainder_indices
 match_rem_nu = find(remainder_indices == 2*n_vars_row+2);
 evec_rem_nu(match_rem_nu) = 1;
 
