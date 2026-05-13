@@ -117,8 +117,8 @@ disp(['The required Ntilde for the tail term is about ',int2str(tildeNestimate)]
 
 %  Ntilde >= Ndagger (to ensure finite part A does not influence tail
 %  estimate)
-Ndagger = 300; % Reduced for faster computation
-Ntilde = 4500; % Reduced for faster computation
+Ndagger = 300;
+Ntilde = 4500; 
 
 %% Create Edaggershape and Etildeshape, specifically for 2D case
 Edaggersh='ell2D';
