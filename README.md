@@ -1,6 +1,6 @@
 # Existence proof of Hopf bifurcation for the Navier-Stokes equations
 
-This repository contains the code corresponding to the proof of a Hopf bifurcation at nu=0.1148 in the Navier-Stokes equations, written by Lindsey van der Aalst and Jan Bouwe van den Berg. The code is heavily inspired by the following code:
+This repository contains the code corresponding to the proof of a Hopf bifurcation at nu=0.1148 and at nu=0.2112 in the Navier-Stokes equations, written by Lindsey van der Aalst and Jan Bouwe van den Berg. The code is heavily inspired by the following code:
 
 J. B. van den Berg, M. Breden, J.-P. Lessard, and L. van Veen. MATLAB code for "Spontaneous periodic orbits in the Navier-Stokes flow", 2019. [https://www.math.vu.nl/~janbouwe/code/navierstokes/](https://www.math.vu.nl/~janbouwe/code/navierstokes/).
 
@@ -8,11 +8,17 @@ J. B. van den Berg, M. Breden, J.-P. Lessard, and L. van Veen. MATLAB code for "
 
 ## How to run the proofs
 
-Run the following file to reproduce the results in the paper:
+Run the following file to reproduce the results for the third Hopf bifurcation point (nu=0.1148):
 
 - [`main_proof.m`](main_proof.m)
 
 Note: The default parameters are currently set to run the "proof" quickly. However, no interval arithmetic is included and the number of modes is too low to yield a successful proof. To run the mathematically rigorous proof, the mode count must be increased, which requires at least 256 GB of RAM. Consequently, the full proof has not yet been executed or verified by the author due to hardware constraints.
+
+Run the following file to reproduce the results for the second Hopf bifurcation point (nu=0.2112):
+
+- [`main_proof_SecondBf.m`](main_proof_SecondBf.m)
+
+Note: No interval arithmetic is included here, as the computation time with floating points yields already takes approximately two weeks to obtain a successful proof. 
 
 ---
 
